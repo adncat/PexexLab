@@ -1,0 +1,59 @@
+1.
+
+The instruction produces the wrong result when computing the product of 6997, -4398042316799 and 179 due to the following assembly code:
+
+0x541efa<arith_driver+506>data.c:700	lea	0x0(,%rbx,4),%rax	rax=0xce39231c6f4c71bc
+
+In this instruction, %rbx has the correct result, and was left shifted by 2 and moved to %rax, which was later returned.
+
+For some reason, the function arith_driver does not directly return the correct mathematical result, but returns 4 times the correct result,
+
+and then the program somehow right shifts the result back to the correct. However, when the correct result has full 64bits, the left shift will result
+
+in the loss of the left-most 2 bits of the answer, even when the result is right shifted back later in the program. Therefore, when the result has 64-bits 
+
+representation, the function will lose the 2 left-most bits and thus produces an incorrect answer.
+
+2.
+
+Searching the term most-positive-fixnum in data.c, we see that this constant is defined by the constant MOST_POSITIVE_FIXNUM.
+
+And MOST_POSITIVE_FIXNUM is defined in Lisp.h as EMACS_INT_MAX >> INTTYPEBITS, which, according to the definition in Lisp.h,
+
+is just LLONG_MAX>>2. Since the maximum of long long is a 64 bits vector with all one's, we see that most-positive-fixnum is just
+
+2^63-1, which is the output of Emacs.
+
+3.
+
+Multiplying such two numbers will obvious causes the function to detect the overflow by the function INT_MULTIPLY_OVERFLOW, so that 
+
+the result will be the result of the bit-wise operation "and" of the product of the two numbers and the constant INTMASK, which, according
+
+to the definition in Lisp.h, is just LLONG_MAX >> 1. And since the product of (2^63-1)(2^63-1) will be 2^126-2^64+1, which, when 
+
+divided by 64, just leaves 1, so 1 & LLONG_MAX>>1 will eventually just produces 1.
+
+4.
+
+With -fsanitize=undefined, the program will check the overflow twice, once in the function INT_MULTIPLY_OVERFLOW, and once in the additional 
+
+assembly code created by this compiler. This will make the program run rather inefficiently since it checks the overflow  twice, but will not causes
+
+any error.
+
+5. 
+
+If we use -fwrapv, the assembly code might give us wrong result since it automatically wraps around an overflow.
+
+6. 
+
+If we use -fwrapv, there is no need to check overflow, since -fwrapv will automatically wrap aorund an overflow so that a lot of instructions that
+
+are created by the overflow checking functions can be deleted, and a lot of space will be saved.
+
+7.
+
+The deletion of overflow checking function will improve the efficiency significantly, since each time the program runs the function, roughly 8 lines are 
+
+executed. So a lot less instructions will be needed to run the program if we delete the overflow checking function and use -fwrapv

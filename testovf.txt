@@ -1,0 +1,56 @@
+With 02, the assembly code looks like the following:
+
+xorl	%eax, %eax
+	ret
+
+which means the compiler realizes that the expression big + LONG_MAX < big will always give 0, so that it 
+
+omits  the calculation and directly gives 0. This is a very high level optimization of the code.
+
+With O2 -fsanitize=undefined, the assembly code looks like the following:
+
+movabsq	$9223372036854775807, %rdx
+	subq	$8, %rsp
+	movq	big(%rip), %rbx
+	movq	%rbx, %rbp
+	addq	%rdx, %rbp
+	jo	.L6
+.L2:
+	xorl	%eax, %eax
+	cmpq	%rbp, %rbx
+	setg	%al
+	addq	$8, %rsp
+	popq	%rbx
+	popq	%rbp
+	ret
+.L6:
+	movq	%rbx, %rsi
+	movl	$.Lubsan_data0, %edi
+	call	__ubsan_handle_add_overflow
+.LVL0:
+	jmp	.L2
+
+This shows that this compiling option directly computes the result by adding and comparing, and also adds
+
+the feature that checks the overflow condition. If overflow occurs, it will call a certain function that deals
+
+with this situation and proceeds the computation.
+
+With O2 -fwrapv, the assembly code looks like the following:
+
+	movq	big(%rip), %rdx
+	movabsq	$9223372036854775807, %rax
+	addq	%rdx, %rax
+	cmpq	%rax, %rdx
+	setg	%al
+	ret
+
+This compiling option does not deal with overflow at all, and neither does it try to optimize the computation.
+
+It directly computed the result following the adding and comparing instruction from the source code, and allowing any overflow to occur.
+
+As a result, this compilation will return true since the addition of two LONG_MAX produces an overflow, which results in a number that is smaller
+
+than LONG_MAX so that the function will return true, which is the false result.
+
+

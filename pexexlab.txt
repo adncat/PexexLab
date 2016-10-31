@@ -1,0 +1,53 @@
+To use gdb to run the emacs-24.5 in the given location, I entered the command:
+
+gdb ~eggert/bin64/bin/emacs-24.5
+
+so that I was able to use gdb to debug the program.
+
+Then, to run the given operation, I enter the command:
+
+run -batch -eval '(print (* 6997 -4398042316799 179))'
+
+Then the program outputs a certain number.
+
+So to gather the trace of the function Ftimes and arith_driver, I added a break point at 
+
+Ftimes by entering the command:
+
+break Ftimes
+
+then if I use the run command again, I will stop at the instruction address of Ftimes.
+
+If I then entered the command:
+
+disas
+
+then it will print out the assembly code of Ftimes, and the relevant address of the functions.
+
+By doing so, I was able to know the addresses of instruction at the beginning of Ftimes.
+
+and to check the value modified, I can simply enter the command:
+
+print $rigister name
+
+then I can see the value in each rigister, so that I will know how each register is modified.
+
+For data in the stack, I can just enter:
+
+info frame
+
+And I will know the data stored in the stack at the current instruction.
+
+To proceed, I can enter:
+
+stepi
+
+so that I can continue to record the next instruction.
+
+Also, I can use the command 
+
+layout asm
+
+to see the current instruction clearly, with addresses and offsets of the function, without using the disas command to print
+
+out the entire assembly of the current function, which is rather convenient and efficient.
